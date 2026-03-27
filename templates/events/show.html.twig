@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ event.title }}{% endblock %}
+
+{% block body %}
+<article class="card">
+    {% if event.image %}
+        <img class="event-image" src="{{ event.image }}" alt="{{ event.title }}">
+    {% endif %}
+
+    <h1>{{ event.title }}</h1>
+    <p class="muted">{{ event.date|date('Y-m-d H:i') }} - {{ event.location }}</p>
+    <p>{{ event.description }}</p>
+    <p><strong>Seats left:</strong> {{ event.seats }}</p>
+</article>
+
+<section class="card">
+    <h2>Reserve a seat</h2>
+
+    {% if event.seats > 0 %}
+        <form method="post" action="{{ path('reservation_create', {id: event.id}) }}">
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" required>
+
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required>
+
+            <label for="phone">Phone</label>
+            <input id="phone" name="phone" type="text" required>
+
+            <input type="hidden" name="_token" value="{{ csrf_token('reserve_event_' ~ event.id) }}">
+            <button class="btn" type="submit">Confirm reservation</button>
+        </form>
+    {% else %}
+        <p class="muted">This event is fully booked.</p>
+    {% endif %}
+</section>
+{% endblock %}

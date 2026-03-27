@@ -1,0 +1,44 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block body %}
+<div style="display:flex;justify-content:space-between;align-items:center;">
+    <h1>Admin Dashboard</h1>
+    <a class="btn" href="{{ path('admin_event_create') }}">Create event</a>
+</div>
+
+<div class="card">
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Date</th>
+                <th>Location</th>
+                <th>Seats</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for event in events %}
+            <tr>
+                <td>{{ event.title }}</td>
+                <td>{{ event.date|date('Y-m-d H:i') }}</td>
+                <td>{{ event.location }}</td>
+                <td>{{ event.seats }}</td>
+                <td>
+                    <a class="btn secondary" href="{{ path('admin_event_edit', {id: event.id}) }}">Edit</a>
+                    <a class="btn secondary" href="{{ path('admin_event_reservations', {id: event.id}) }}">Reservations</a>
+                    <form class="inline" method="post" action="{{ path('admin_event_delete', {id: event.id}) }}" onsubmit="return confirm('Delete this event?');">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_event_delete_' ~ event.id) }}">
+                        <button class="btn danger" type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="5">No events found.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

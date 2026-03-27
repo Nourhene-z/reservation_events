@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}Event Reservation{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+        {% block stylesheets %}
+            <style>
+                body { font-family: Arial, sans-serif; margin: 0; background: #f6f8fb; color: #1f2937; }
+                .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+                nav { background: #0f172a; color: #fff; }
+                nav .container { display: flex; gap: 16px; align-items: center; }
+                nav a { color: #fff; text-decoration: none; padding: 14px 0; }
+                nav a:hover { text-decoration: underline; }
+                h1, h2 { margin-top: 0; }
+                .card { background: #fff; border: 1px solid #dbe3ee; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+                .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+                .btn { display: inline-block; border: 0; border-radius: 8px; padding: 10px 14px; background: #1d4ed8; color: #fff; text-decoration: none; cursor: pointer; }
+                .btn.secondary { background: #475569; }
+                .btn.danger { background: #b91c1c; }
+                .muted { color: #64748b; }
+                .flash { padding: 10px 12px; border-radius: 8px; margin-bottom: 10px; }
+                .flash.success { background: #dcfce7; border: 1px solid #86efac; }
+                .flash.error { background: #fee2e2; border: 1px solid #fca5a5; }
+                input, textarea { width: 100%; box-sizing: border-box; margin-top: 6px; margin-bottom: 12px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+                .inline { display: inline; }
+                .event-image { width: 100%; max-height: 220px; object-fit: cover; border-radius: 8px; background: #eef2ff; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { text-align: left; border-bottom: 1px solid #e2e8f0; padding: 10px 8px; }
+            </style>
+        {% endblock %}
+
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+
+        {% set frankenphpHotReload = app.request.server.get('FRANKENPHP_HOT_RELOAD') %}
+        {% if frankenphpHotReload %}
+        <meta name="frankenphp-hot-reload:url" content="{{ frankenphpHotReload }}">
+        <script src="https://cdn.jsdelivr.net/npm/idiomorph"></script>
+        <script src="https://cdn.jsdelivr.net/npm/frankenphp-hot-reload/+esm" type="module"></script>
+        {% endif %}
+    </head>
+    <body>
+        <nav>
+            <div class="container">
+                <a href="{{ path('app_home') }}">Home</a>
+                <a href="{{ path('event_list') }}">Events</a>
+                {% if app.user %}
+                    {% if 'ROLE_ADMIN' in app.user.roles %}
+                        <a href="{{ path('admin_dashboard') }}">Admin</a>
+                    {% endif %}
+                    <a href="{{ path('app_logout') }}">Logout</a>
+                {% else %}
+                    <a href="{{ path('app_login') }}">Login</a>
+                    <a href="{{ path('app_register') }}">Register</a>
+                {% endif %}
+            </div>
+        </nav>
+
+        <main class="container">
+            {% for message in app.flashes('success') %}
+                <div class="flash success">{{ message }}</div>
+            {% endfor %}
+            {% for message in app.flashes('error') %}
+                <div class="flash error">{{ message }}</div>
+            {% endfor %}
+
+            {% block body %}{% endblock %}
+        </main>
+    </body>
+</html>

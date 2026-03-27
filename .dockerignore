@@ -1,0 +1,6 @@
+vendor/
+var/
+.git/
+.idea/
+.vscode/
+node_modules/

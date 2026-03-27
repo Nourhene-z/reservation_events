@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Register{% endblock %}
+
+{% block body %}
+<div class="card" style="max-width: 460px; margin: 20px auto;">
+    <h1>Create account</h1>
+
+    <form method="post">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" required>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required>
+
+        <input type="hidden" name="_token" value="{{ csrf_token('register_form') }}">
+
+        <button class="btn" type="submit">Register</button>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Accueil{% endblock %}
+
+{% block body %}
+    <h1>Upcoming Events</h1>
+
+    <div class="grid">
+        {% for event in events %}
+            <article class="card">
+                {% if event.image %}
+                    <img class="event-image" src="{{ event.image }}" alt="{{ event.title }}">
+                {% endif %}
+                <h2>{{ event.title }}</h2>
+                <p class="muted">{{ event.date|date('Y-m-d H:i') }} - {{ event.location }}</p>
+                <p>{{ event.description|slice(0, 130) }}{% if event.description|length > 130 %}...{% endif %}</p>
+                <p><strong>Seats left:</strong> {{ event.seats }}</p>
+                <a class="btn" href="{{ path('event_show', {id: event.id}) }}">View details</a>
+            </article>
+        {% else %}
+            <p>No events available yet.</p>
+        {% endfor %}
+    </div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ submitLabel }}{% endblock %}
+
+{% block body %}
+<div class="card" style="max-width: 760px; margin: 0 auto;">
+    <h1>{{ submitLabel }}</h1>
+
+    <form method="post">
+        <label for="title">Title</label>
+        <input id="title" name="title" type="text" value="{{ event ? event.title : '' }}" required>
+
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="5" required>{{ event ? event.description : '' }}</textarea>
+
+        <label for="date">Date and time</label>
+        <input id="date" name="date" type="datetime-local" value="{{ event ? event.date|date('Y-m-d\\TH:i') : '' }}" required>
+
+        <label for="location">Location</label>
+        <input id="location" name="location" type="text" value="{{ event ? event.location : '' }}" required>
+
+        <label for="seats">Seats</label>
+        <input id="seats" name="seats" type="number" min="0" value="{{ event ? event.seats : 0 }}" required>
+
+        <label for="image">Image URL</label>
+        <input id="image" name="image" type="url" value="{{ event ? event.image : '' }}">
+
+        <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
+        <button class="btn" type="submit">{{ submitLabel }}</button>
+    </form>
+</div>
+{% endblock %}

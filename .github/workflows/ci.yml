@@ -1,0 +1,62 @@
+name: Symfony CI
+
+on:
+    push:
+        branches: ["main", "master"]
+    pull_request:
+
+jobs:
+    build-and-check:
+        runs-on: ubuntu-latest
+
+        services:
+            mariadb:
+                image: mariadb:10.11
+                env:
+                    MARIADB_DATABASE: mini_event_db
+                    MARIADB_USER: app
+                    MARIADB_PASSWORD: app
+                    MARIADB_ROOT_PASSWORD: root
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd="mariadb-admin ping -h localhost -u root -proot"
+                    --health-interval=10s
+                    --health-timeout=5s
+                    --health-retries=10
+
+        env:
+            APP_ENV: test
+            APP_SECRET: test_secret
+            DATABASE_URL: mysql://app:app@127.0.0.1:3306/mini_event_db?charset=utf8mb4
+            JWT_SECRET: change_this_secret_in_prod_please_use_at_least_32_chars_123456
+            JWT_TTL: 3600
+            PASSKEY_RP_ID: 127.0.0.1
+            PASSKEY_RP_NAME: Event Reservation
+            PASSKEY_CHALLENGE_TTL: 300
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: "8.4"
+                  extensions: mbstring, intl, pdo_mysql
+                  tools: composer
+
+            - name: Install dependencies
+              run: composer install --no-interaction --prefer-dist
+
+            - name: Lint container
+              run: php bin/console lint:container
+
+            - name: Run migrations
+              run: php bin/console doctrine:migrations:migrate --no-interaction
+
+            - name: Run tests
+              run: php bin/phpunit --testdox
+
+            - name: Security smoke test routes
+              run: php bin/console debug:router
