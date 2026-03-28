@@ -3,7 +3,10 @@
 {% block title %}Reservations{% endblock %}
 
 {% block body %}
-<h1>Reservations - {{ event.title }}</h1>
+<div class="section-head">
+    <h1>Reservations - {{ event.title }}</h1>
+    <a class="btn secondary" href="{{ path('admin_dashboard') }}">Back to dashboard</a>
+</div>
 
 <div class="card">
     <table>
@@ -29,6 +32,4 @@
         </tbody>
     </table>
 </div>
-
-<a class="btn secondary" href="{{ path('admin_dashboard') }}">Back to dashboard</a>
 {% endblock %}

@@ -3,19 +3,36 @@
 {% block title %}{{ event.title }}{% endblock %}
 
 {% block body %}
-<article class="card">
-    {% if event.image %}
-        <img class="event-image" src="{{ event.image }}" alt="{{ event.title }}">
-    {% endif %}
-
+<div class="section-head">
     <h1>{{ event.title }}</h1>
-    <p class="muted">{{ event.date|date('Y-m-d H:i') }} - {{ event.location }}</p>
-    <p>{{ event.description }}</p>
-    <p><strong>Seats left:</strong> {{ event.seats }}</p>
-</article>
+    <span class="badge">Event details</span>
+</div>
+
+<section class="card event-panel">
+    <div>
+        {% if event.image %}
+            <img class="event-poster" src="{{ event.image }}" alt="{{ event.title }}">
+        {% else %}
+            <div class="event-poster"></div>
+        {% endif %}
+        <p style="margin-top: 0.8rem;">{{ event.description }}</p>
+    </div>
+    <aside>
+        <h2>Event Facts</h2>
+        <ul class="mini-list">
+            <li><strong>Date:</strong> {{ event.date|date('Y-m-d H:i') }}</li>
+            <li><strong>Location:</strong> {{ event.location }}</li>
+            <li><strong>Seats left:</strong> {{ event.seats }}</li>
+            <li><strong>Status:</strong> {% if event.seats > 0 %}Available{% else %}Sold out{% endif %}</li>
+        </ul>
+    </aside>
+</section>
 
 <section class="card">
-    <h2>Reserve a seat</h2>
+    <div class="section-head">
+        <h2>Reserve a seat</h2>
+        <span class="badge">Quick form</span>
+    </div>
 
     {% if event.seats > 0 %}
         <form method="post" action="{{ path('reservation_create', {id: event.id}) }}">

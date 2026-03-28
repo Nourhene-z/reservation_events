@@ -4,7 +4,10 @@
 
 {% block body %}
 <div class="card" style="max-width: 760px; margin: 0 auto;">
-    <h1>{{ submitLabel }}</h1>
+    <div class="section-head">
+        <h1>{{ submitLabel }}</h1>
+        <span class="badge">Admin panel</span>
+    </div>
 
     <form method="post">
         <label for="title">Title</label>
@@ -27,6 +30,7 @@
 
         <input type="hidden" name="_token" value="{{ csrf_token(csrfTokenId) }}">
         <button class="btn" type="submit">{{ submitLabel }}</button>
+        <a class="btn secondary" href="{{ path('admin_dashboard') }}">Back</a>
     </form>
 </div>
 {% endblock %}

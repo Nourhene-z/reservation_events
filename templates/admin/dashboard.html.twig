@@ -3,7 +3,7 @@
 {% block title %}Admin Dashboard{% endblock %}
 
 {% block body %}
-<div style="display:flex;justify-content:space-between;align-items:center;">
+<div class="admin-head">
     <h1>Admin Dashboard</h1>
     <a class="btn" href="{{ path('admin_event_create') }}">Create event</a>
 </div>
@@ -27,12 +27,14 @@
                 <td>{{ event.location }}</td>
                 <td>{{ event.seats }}</td>
                 <td>
-                    <a class="btn secondary" href="{{ path('admin_event_edit', {id: event.id}) }}">Edit</a>
-                    <a class="btn secondary" href="{{ path('admin_event_reservations', {id: event.id}) }}">Reservations</a>
-                    <form class="inline" method="post" action="{{ path('admin_event_delete', {id: event.id}) }}" onsubmit="return confirm('Delete this event?');">
-                        <input type="hidden" name="_token" value="{{ csrf_token('admin_event_delete_' ~ event.id) }}">
-                        <button class="btn danger" type="submit">Delete</button>
-                    </form>
+                    <div class="table-actions">
+                        <a class="btn secondary" href="{{ path('admin_event_edit', {id: event.id}) }}">Edit</a>
+                        <a class="btn secondary" href="{{ path('admin_event_reservations', {id: event.id}) }}">Reservations</a>
+                        <form class="inline" method="post" action="{{ path('admin_event_delete', {id: event.id}) }}" onsubmit="return confirm('Delete this event?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('admin_event_delete_' ~ event.id) }}">
+                            <button class="btn danger" type="submit">Delete</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
         {% else %}

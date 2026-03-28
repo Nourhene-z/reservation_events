@@ -38,10 +38,16 @@ php bin/console doctrine:migrations:migrate --no-interaction
 php bin/console app:create-demo-users
 ```
 
+Default web admin credentials:
+
+- Username: `admin`
+- Password: `admin1234`
+- Admin login URL: `/admin/login`
+
 5. Start server
 
 ```bash
-php -S 127.0.0.1:8011 -t public
+php -S 127.0.0.1:8011 -t public public/index.php
 ```
 
 ## API quick tests
@@ -72,14 +78,22 @@ POST /api/passkey/options
 }
 ```
 
+Response includes WebAuthn options in `publicKey` for `navigator.credentials.get()`.
+
 ### Passkey verify
 
 ```bash
 POST /api/passkey/verify
 {
   "username": "user",
-  "challenge": "...",
-  "credentialId": "..."
+  "assertion": {
+    "id": "<credentialId base64url>",
+    "response": {
+      "clientDataJSON": "<base64url>",
+      "authenticatorData": "<base64url>",
+      "signature": "<base64url>"
+    }
+  }
 }
 ```
 
@@ -97,5 +111,7 @@ docker compose up -d --build
 
 - JWT is implemented with HS256 (`firebase/php-jwt`)
 - Login throttling is enabled for both web and API logins
+- Web form login is restricted to admin accounts only
+- Passkey endpoints are now rate-limited with dedicated limiters
 - Passkey challenge has a configurable short TTL
-- Passkey verify now requires an existing credential bound to the user
+- Passkey registration and authentication now validate WebAuthn cryptographic proofs (origin, rpId hash, signature, sign counter)

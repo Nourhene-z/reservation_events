@@ -19,6 +19,8 @@ services:
             string $passkeyRpId: "%env(PASSKEY_RP_ID)%"
             string $passkeyRpName: "%env(PASSKEY_RP_NAME)%"
             int $passkeyChallengeTtl: "%env(int:PASSKEY_CHALLENGE_TTL)%"
+            Symfony\Component\RateLimiter\RateLimiterFactory $passkeyPublicLimiter: "@limiter.passkey_public"
+            Symfony\Component\RateLimiter\RateLimiterFactory $passkeyAuthenticatedLimiter: "@limiter.passkey_authenticated"
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name

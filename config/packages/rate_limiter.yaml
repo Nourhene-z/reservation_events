@@ -1,0 +1,10 @@
+framework:
+    rate_limiter:
+        passkey_public:
+            policy: sliding_window
+            limit: 20
+            interval: "1 minute"
+        passkey_authenticated:
+            policy: sliding_window
+            limit: 30
+            interval: "1 minute"

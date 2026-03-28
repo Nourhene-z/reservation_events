@@ -15,12 +15,17 @@ class PasskeyChallengeStore
     public function issue(string $username): string
     {
         $challenge = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
+        $this->store($username, $challenge);
+
+        return $challenge;
+    }
+
+    public function store(string $username, string $challenge): void
+    {
         $item = $this->cache->getItem($this->buildKey($username));
         $item->set($challenge);
         $item->expiresAfter($this->passkeyChallengeTtl);
         $this->cache->save($item);
-
-        return $challenge;
     }
 
     public function consume(string $username): ?string

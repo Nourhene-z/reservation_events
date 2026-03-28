@@ -6,10 +6,18 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class SecurityRoutesTest extends WebTestCase
 {
-    public function testLoginPageIsReachable(): void
+    public function testLoginRouteRedirectsToAdminLogin(): void
     {
         $client = static::createClient();
         $client->request('GET', '/login');
+
+        self::assertResponseRedirects('/admin/login');
+    }
+
+    public function testAdminLoginPageIsReachable(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/admin/login');
 
         self::assertResponseIsSuccessful();
     }

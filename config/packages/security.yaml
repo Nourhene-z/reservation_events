@@ -43,14 +43,14 @@ security:
                 - App\Security\JwtAuthenticator
         main:
             lazy: true
-            provider: app_chain
+            provider: admins
             login_throttling:
                 max_attempts: 5
                 interval: "1 minute"
             form_login:
-                login_path: app_login
-                check_path: app_login
-                default_target_path: app_home
+                login_path: app_admin_login
+                check_path: app_admin_login
+                default_target_path: admin_dashboard
                 enable_csrf: true
             logout:
                 path: app_logout
@@ -65,6 +65,7 @@ security:
     # Note: Only the *first* matching rule is applied
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/admin/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/passkey/options$, roles: PUBLIC_ACCESS }
         - { path: ^/api/passkey/verify$, roles: PUBLIC_ACCESS }

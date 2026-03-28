@@ -3,7 +3,17 @@
 {% block title %}Accueil{% endblock %}
 
 {% block body %}
-    <h1>Upcoming Events</h1>
+    <section class="hero">
+        <span class="badge">Live Events</span>
+        <h1>EVENT Vibes & Night Energy</h1>
+        <p class="muted">Discover the next concerts, shows, and experiences. Reserve your seat in seconds and keep your event calendar always up to date.</p>
+        <a class="btn" href="{{ path('event_list') }}">Explore all events</a>
+    </section>
+
+    <div class="section-head">
+        <h2>Follow Event Schedule</h2>
+        <span class="badge">Latest</span>
+    </div>
 
     <div class="grid">
         {% for event in events %}

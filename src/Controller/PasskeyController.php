@@ -8,10 +8,12 @@ use App\Repository\PasskeyCredentialRepository;
 use App\Repository\UserRepository;
 use App\Security\JwtTokenService;
 use App\Security\PasskeyChallengeStore;
+use App\Security\WebAuthnServer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/passkey')]
@@ -23,8 +25,9 @@ class PasskeyController extends AbstractController
         private readonly PasskeyCredentialRepository $credentials,
         private readonly EntityManagerInterface $em,
         private readonly JwtTokenService $jwt,
-        private readonly string $passkeyRpId,
-        private readonly string $passkeyRpName,
+        private readonly WebAuthnServer $webAuthn,
+        private readonly RateLimiterFactory $passkeyPublicLimiter,
+        private readonly RateLimiterFactory $passkeyAuthenticatedLimiter,
     ) {
     }
 
@@ -33,6 +36,14 @@ class PasskeyController extends AbstractController
     {
         $payload = json_decode($request->getContent(), true) ?? [];
         $username = trim((string) ($payload['username'] ?? ''));
+
+        $publicLimit = $this->consumePasskeyRateLimit(
+            $this->passkeyPublicLimiter,
+            $this->buildPublicKey($request, $username)
+        );
+        if ($publicLimit !== null) {
+            return $publicLimit;
+        }
 
         if ($username === '') {
             return $this->json(['error' => 'username is required'], 400);
@@ -44,25 +55,26 @@ class PasskeyController extends AbstractController
         }
 
         $credentials = $this->credentials->findByUser('user', $username);
-        $allowCredentials = array_map(static function (PasskeyCredential $credential): array {
-            return [
-                'id' => $credential->getCredentialId(),
-                'type' => 'public-key',
-                'transports' => $credential->getTransports() ?? [],
-            ];
-        }, $credentials);
+        $credentialIds = array_values(array_filter(array_map(
+            static fn (PasskeyCredential $credential): ?string => $credential->getCredentialId(),
+            $credentials
+        )));
 
-        $challenge = $this->challengeStore->issue($username);
+        $options = $this->webAuthn->createAuthenticationOptions($credentialIds);
+        $challenge = $options['challenge'];
+        $this->challengeStore->store($username, $challenge);
+
+        $publicKey = $options['publicKey'];
 
         return $this->json([
+            'publicKey' => $publicKey,
             'challenge' => $challenge,
-            'rpId' => $this->passkeyRpId,
-            'rpName' => $this->passkeyRpName,
+            'rpId' => $publicKey['rpId'] ?? null,
             'username' => $username,
             'displayName' => $user->getUsername(),
-            'timeout' => 60000,
-            'userVerification' => 'preferred',
-            'allowCredentials' => $allowCredentials,
+            'timeout' => $publicKey['timeout'] ?? 60000,
+            'userVerification' => $publicKey['userVerification'] ?? 'required',
+            'allowCredentials' => $publicKey['allowCredentials'] ?? [],
         ]);
     }
 
@@ -71,15 +83,34 @@ class PasskeyController extends AbstractController
     {
         $payload = json_decode($request->getContent(), true) ?? [];
         $username = trim((string) ($payload['username'] ?? ''));
-        $challenge = (string) ($payload['challenge'] ?? '');
-        $credentialId = trim((string) ($payload['credentialId'] ?? ''));
 
-        if ($username === '' || $challenge === '' || $credentialId === '') {
-            return $this->json(['error' => 'username, challenge and credentialId are required'], 400);
+        $publicLimit = $this->consumePasskeyRateLimit(
+            $this->passkeyPublicLimiter,
+            $this->buildPublicKey($request, $username)
+        );
+        if ($publicLimit !== null) {
+            return $publicLimit;
+        }
+
+        $assertion = is_array($payload['assertion'] ?? null) ? $payload['assertion'] : $payload;
+        $response = is_array($assertion['response'] ?? null) ? $assertion['response'] : $payload;
+        $credentialId = trim((string) ($assertion['id'] ?? $payload['credentialId'] ?? ''));
+        $clientDataJSON = trim((string) ($response['clientDataJSON'] ?? $payload['clientDataJSON'] ?? ''));
+        $authenticatorData = trim((string) ($response['authenticatorData'] ?? $payload['authenticatorData'] ?? ''));
+        $signature = trim((string) ($response['signature'] ?? $payload['signature'] ?? ''));
+
+        if (
+            $username === ''
+            || $credentialId === ''
+            || $clientDataJSON === ''
+            || $authenticatorData === ''
+            || $signature === ''
+        ) {
+            return $this->json(['error' => 'username, credentialId and WebAuthn assertion fields are required'], 400);
         }
 
         $expected = $this->challengeStore->consume($username);
-        if ($expected === null || !hash_equals($expected, $challenge)) {
+        if ($expected === null) {
             return $this->json(['error' => 'invalid challenge'], 401);
         }
 
@@ -96,6 +127,22 @@ class PasskeyController extends AbstractController
         if ($credential->getUserType() !== 'user' || $credential->getUserIdentifier() !== $username) {
             return $this->json(['error' => 'credential does not belong to user'], 401);
         }
+
+        try {
+            $newSignCount = $this->webAuthn->verifyAssertion(
+                credentialPublicKeyPem: (string) $credential->getPublicKey(),
+                expectedChallenge: $expected,
+                clientDataJSON: $clientDataJSON,
+                authenticatorData: $authenticatorData,
+                signature: $signature,
+                previousSignCount: $credential->getSignCount()
+            );
+        } catch (\RuntimeException) {
+            return $this->json(['error' => 'invalid assertion'], 401);
+        }
+
+        $credential->setSignCount($newSignCount);
+        $this->em->flush();
 
         return $this->json([
             'token' => $this->jwt->createToken($user),
@@ -116,16 +163,41 @@ class PasskeyController extends AbstractController
             return $this->json(['error' => 'authentication required'], 401);
         }
 
-        $challenge = $this->challengeStore->issue($user->getUsername());
+        $authLimit = $this->consumePasskeyRateLimit(
+            $this->passkeyAuthenticatedLimiter,
+            $this->buildAuthenticatedKey($request, (string) $user->getUsername())
+        );
+        if ($authLimit !== null) {
+            return $authLimit;
+        }
+
+        $credentials = $this->credentials->findByUser('user', $user->getUsername());
+        $excludeCredentialIds = array_values(array_filter(array_map(
+            static fn (PasskeyCredential $credential): ?string => $credential->getCredentialId(),
+            $credentials
+        )));
+
+        $options = $this->webAuthn->createRegistrationOptions(
+            userId: (string) $user->getId(),
+            username: (string) $user->getUsername(),
+            displayName: (string) $user->getUsername(),
+            excludeCredentialIds: $excludeCredentialIds
+        );
+
+        $challenge = $options['challenge'];
+        $this->challengeStore->store($user->getUsername(), $challenge);
+
+        $publicKey = $options['publicKey'];
 
         return $this->json([
+            'publicKey' => $publicKey,
             'challenge' => $challenge,
-            'rpId' => $this->passkeyRpId,
-            'rpName' => $this->passkeyRpName,
+            'rpId' => $publicKey['rp']['id'] ?? null,
+            'rpName' => $publicKey['rp']['name'] ?? null,
             'username' => $user->getUsername(),
             'displayName' => $user->getUsername(),
-            'timeout' => 60000,
-            'attestation' => 'none',
+            'timeout' => $publicKey['timeout'] ?? 60000,
+            'attestation' => $publicKey['attestation'] ?? 'none',
         ]);
     }
 
@@ -138,19 +210,47 @@ class PasskeyController extends AbstractController
             return $this->json(['error' => 'authentication required'], 401);
         }
 
+        $authLimit = $this->consumePasskeyRateLimit(
+            $this->passkeyAuthenticatedLimiter,
+            $this->buildAuthenticatedKey($request, (string) $user->getUsername())
+        );
+        if ($authLimit !== null) {
+            return $authLimit;
+        }
+
         $payload = json_decode($request->getContent(), true) ?? [];
-        $challenge = (string) ($payload['challenge'] ?? '');
-        $credentialId = trim((string) ($payload['credentialId'] ?? ''));
-        $publicKey = (string) ($payload['publicKey'] ?? '');
+        $attestation = is_array($payload['attestation'] ?? null) ? $payload['attestation'] : $payload;
+        $response = is_array($attestation['response'] ?? null) ? $attestation['response'] : $payload;
+        $clientProvidedCredentialId = trim((string) ($attestation['id'] ?? $payload['credentialId'] ?? ''));
+        $clientDataJSON = trim((string) ($response['clientDataJSON'] ?? $payload['clientDataJSON'] ?? ''));
+        $attestationObject = trim((string) ($response['attestationObject'] ?? $payload['attestationObject'] ?? ''));
         $transports = $payload['transports'] ?? [];
 
-        if ($credentialId === '' || $challenge === '' || $publicKey === '') {
-            return $this->json(['error' => 'credentialId, publicKey and challenge are required'], 400);
+        if ($clientDataJSON === '' || $attestationObject === '') {
+            return $this->json(['error' => 'WebAuthn attestation payload is required'], 400);
         }
 
         $expected = $this->challengeStore->consume($user->getUsername());
-        if ($expected === null || !hash_equals($expected, $challenge)) {
+        if ($expected === null) {
             return $this->json(['error' => 'invalid challenge'], 401);
+        }
+
+        try {
+            $verified = $this->webAuthn->verifyRegistration(
+                expectedChallenge: $expected,
+                clientDataJSON: $clientDataJSON,
+                attestationObject: $attestationObject
+            );
+        } catch (\RuntimeException) {
+            return $this->json(['error' => 'invalid attestation'], 401);
+        }
+
+        $credentialId = $verified['credentialId'];
+        $publicKeyPem = $verified['publicKeyPem'];
+        $signCount = $verified['signCount'];
+
+        if ($clientProvidedCredentialId !== '' && $clientProvidedCredentialId !== $credentialId) {
+            return $this->json(['error' => 'credential id mismatch'], 400);
         }
 
         if ($this->credentials->findOneByCredentialId($credentialId) instanceof PasskeyCredential) {
@@ -162,8 +262,8 @@ class PasskeyController extends AbstractController
             ->setUserType('user')
             ->setUserIdentifier($user->getUsername())
             ->setCredentialId($credentialId)
-            ->setPublicKey($publicKey !== '' ? $publicKey : null)
-            ->setSignCount(0)
+            ->setPublicKey($publicKeyPem !== '' ? $publicKeyPem : null)
+            ->setSignCount($signCount)
             ->setTransports(is_array($transports) ? $transports : null)
             ->setCreatedAt(new \DateTime());
 
@@ -174,5 +274,36 @@ class PasskeyController extends AbstractController
             'status' => 'ok',
             'credentialId' => $credentialId,
         ]);
+    }
+
+    private function consumePasskeyRateLimit(RateLimiterFactory $factory, string $key): ?JsonResponse
+    {
+        $limit = $factory->create($key)->consume(1);
+        if ($limit->isAccepted()) {
+            return null;
+        }
+
+        $retryAfter = $limit->getRetryAfter();
+
+        return $this->json([
+            'error' => 'too many requests',
+            'retry_after' => $retryAfter?->getTimestamp(),
+        ], 429);
+    }
+
+    private function buildPublicKey(Request $request, string $username): string
+    {
+        $ip = $request->getClientIp() ?? 'unknown';
+        $normalizedUsername = strtolower(trim($username));
+
+        return 'passkey.public.' . $ip . '.' . hash('sha256', $normalizedUsername !== '' ? $normalizedUsername : $ip);
+    }
+
+    private function buildAuthenticatedKey(Request $request, string $username): string
+    {
+        $ip = $request->getClientIp() ?? 'unknown';
+        $normalizedUsername = strtolower(trim($username));
+
+        return 'passkey.auth.' . $ip . '.' . hash('sha256', $normalizedUsername !== '' ? $normalizedUsername : $ip);
     }
 }
