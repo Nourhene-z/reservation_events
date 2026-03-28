@@ -15,20 +15,29 @@
         <span class="badge">Latest</span>
     </div>
 
-    <div class="grid">
+    <div class="event-listings">
         {% for event in events %}
-            <article class="card">
+            <article class="card event-row">
                 {% if event.image %}
                     <img class="event-image" src="{{ event.image }}" alt="{{ event.title }}">
+                {% else %}
+                    <div class="event-image"></div>
                 {% endif %}
-                <h2>{{ event.title }}</h2>
-                <p class="muted">{{ event.date|date('Y-m-d H:i') }} - {{ event.location }}</p>
-                <p>{{ event.description|slice(0, 130) }}{% if event.description|length > 130 %}...{% endif %}</p>
-                <p><strong>Seats left:</strong> {{ event.seats }}</p>
-                <a class="btn" href="{{ path('event_show', {id: event.id}) }}">View details</a>
+                <div>
+                    <div class="event-meta">
+                        <span class="badge">{{ event.date|date('M d') }}</span>
+                        <span class="badge">{{ event.location }}</span>
+                    </div>
+                    <h2 class="event-title">{{ event.title }}</h2>
+                    <p class="muted">{{ event.description|slice(0, 120) }}{% if event.description|length > 120 %}...{% endif %}</p>
+                </div>
+                <div class="event-row-actions">
+                    <p class="event-seats"><strong>Seats:</strong> {{ event.seats }}</p>
+                    <a class="btn" href="{{ path('event_show', {id: event.id}) }}">Buy Ticket</a>
+                </div>
             </article>
         {% else %}
-            <p>No events available yet.</p>
+            <p class="muted">No events available yet.</p>
         {% endfor %}
     </div>
 {% endblock %}
