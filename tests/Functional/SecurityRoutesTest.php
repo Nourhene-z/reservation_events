@@ -53,4 +53,17 @@ class SecurityRoutesTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(401);
     }
+
+    public function testPasskeyOptionsRequiresUsername(): void
+    {
+        $client = static::createClient();
+        $client->request(
+            'POST',
+            '/api/passkey/options',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: json_encode([])
+        );
+
+        self::assertResponseStatusCodeSame(400);
+    }
 }
