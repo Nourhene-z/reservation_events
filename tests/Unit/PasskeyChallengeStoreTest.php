@@ -27,4 +27,21 @@ class PasskeyChallengeStoreTest extends TestCase
 
         self::assertSame($challenge, $store->consume(' username '));
     }
+
+    public function testConsumeReturnsNullForUnknownUsername(): void
+    {
+        $store = new PasskeyChallengeStore(new ArrayAdapter(), 300);
+
+        self::assertNull($store->consume('missing-user'));
+    }
+
+    public function testStoreCanOverridePreviousChallenge(): void
+    {
+        $store = new PasskeyChallengeStore(new ArrayAdapter(), 300);
+
+        $store->store('user', 'old-challenge');
+        $store->store('user', 'new-challenge');
+
+        self::assertSame('new-challenge', $store->consume('user'));
+    }
 }
