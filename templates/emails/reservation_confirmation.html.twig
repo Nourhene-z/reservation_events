@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reservation confirmation</title>
+</head>
+<body style="font-family: Arial, sans-serif; color: #111; line-height: 1.5;">
+    <h2 style="margin-bottom: 0.6rem;">Reservation confirmed</h2>
+    <p>Hello {{ reservation.name }},</p>
+    <p>Your reservation has been confirmed. Here is your reservation summary:</p>
+
+    <ul>
+        <li><strong>Event:</strong> {{ event.title }}</li>
+        <li><strong>Date:</strong> {{ event.date ? event.date|date('Y-m-d H:i') : 'N/A' }}</li>
+        <li><strong>Location:</strong> {{ event.location }}</li>
+        <li><strong>Reserved for:</strong> {{ reservation.name }}</li>
+        <li><strong>Email:</strong> {{ reservation.email }}</li>
+        <li><strong>Phone:</strong> {{ reservation.phone }}</li>
+        <li><strong>Reservation ID:</strong> {{ reservation.id }}</li>
+        <li><strong>Booked at:</strong> {{ reservation.createdAt ? reservation.createdAt|date('Y-m-d H:i') : 'N/A' }}</li>
+    </ul>
+
+    <p>Thank you for booking with EventFlow.</p>
+</body>
+</html>

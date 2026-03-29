@@ -16,6 +16,7 @@ services:
         bind:
             string $jwtSecret: "%env(JWT_SECRET)%"
             int $jwtTtl: "%env(int:JWT_TTL)%"
+            string $mailerFrom: "%env(MAILER_FROM)%"
             string $passkeyRpId: "%env(PASSKEY_RP_ID)%"
             string $passkeyRpName: "%env(PASSKEY_RP_NAME)%"
             int $passkeyChallengeTtl: "%env(int:PASSKEY_CHALLENGE_TTL)%"

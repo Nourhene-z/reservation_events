@@ -5,9 +5,13 @@ namespace App\Controller;
 use App\Entity\Reservation;
 use App\Repository\EventRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Attribute\Route;
 
 class ReservationController extends AbstractController
@@ -18,6 +22,9 @@ class ReservationController extends AbstractController
         Request $request,
         EventRepository $events,
         EntityManagerInterface $em,
+        MailerInterface $mailer,
+        LoggerInterface $logger,
+        string $mailerFrom,
     ): RedirectResponse {
         if (!$this->isCsrfTokenValid('reserve_event_' . $id, (string) $request->request->get('_token'))) {
             $this->addFlash('error', 'Invalid form token. Please try again.');
@@ -61,7 +68,29 @@ class ReservationController extends AbstractController
         $em->persist($reservation);
         $em->flush();
 
-        $this->addFlash('success', 'Reservation confirmed successfully.');
+        $emailMessage = (new Email())
+            ->from($mailerFrom)
+            ->to((string) $reservation->getEmail())
+            ->subject('Reservation confirmation - ' . ($event->getTitle() ?? 'Event'))
+            ->html($this->renderView('emails/reservation_confirmation.html.twig', [
+                'reservation' => $reservation,
+                'event' => $event,
+            ]));
+
+        try {
+            $mailer->send($emailMessage);
+            $this->addFlash('success', 'Reservation confirmed. A verification email has been sent.');
+        } catch (TransportExceptionInterface $exception) {
+            $logger->error('Reservation confirmation email failed.', [
+                'event_id' => $event->getId(),
+                'reservation_id' => $reservation->getId(),
+                'email' => $reservation->getEmail(),
+                'error' => $exception->getMessage(),
+            ]);
+
+            $this->addFlash('success', 'Reservation confirmed successfully.');
+            $this->addFlash('error', 'Reservation email could not be sent. Please check mailer configuration.');
+        }
 
         return $this->redirectToRoute('event_show', ['id' => $id]);
     }
