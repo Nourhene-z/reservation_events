@@ -46,6 +46,9 @@ jobs:
                   extensions: mbstring, intl, pdo_mysql
                   tools: composer
 
+            - name: Validate composer metadata
+              run: composer validate --strict
+
             - name: Install dependencies
               run: composer install --no-interaction --prefer-dist
 
