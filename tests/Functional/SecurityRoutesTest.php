@@ -66,4 +66,27 @@ class SecurityRoutesTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(400);
     }
+
+    public function testPasskeyVerifyRequiresAssertionFields(): void
+    {
+        $client = static::createClient();
+        $client->request(
+            'POST',
+            '/api/passkey/verify',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: json_encode([
+                'username' => 'user',
+                'assertion' => [
+                    'id' => '',
+                    'response' => [
+                        'clientDataJSON' => '',
+                        'authenticatorData' => '',
+                        'signature' => '',
+                    ],
+                ],
+            ])
+        );
+
+        self::assertResponseStatusCodeSame(400);
+    }
 }
