@@ -13,7 +13,7 @@ Il est aligne avec l'implementation Symfony actuelle du projet:
 
 - Authentification web (form login)
 - Authentification API par JWT
-- Endpoint JWT actif: /api/login_check
+- Endpoint JWT actif: /api/login
 - Endpoint protege de test: /api/me
 - Base de donnees cible: MySQL/MariaDB
 
@@ -39,7 +39,7 @@ sequenceDiagram
     participant C as Client (Postman/JS)
     participant S as Serveur Symfony
 
-    C->>S: POST /api/login_check\n{username, password}
+    C->>S: POST /api/login\n{username, password}
     S->>S: Verification credentials
     S->>S: Generation JWT (HS256)
     S-->>C: 200 {token, user, roles, expires_in}
@@ -251,17 +251,41 @@ server {
 
 ### 5.1 Problemes courants et solutions
 
-| Probleme                                  | Cause probable                            | Solution                                      |
-| ----------------------------------------- | ----------------------------------------- | --------------------------------------------- |
-| 500 sur /api/login_check                  | DB non accessible ou mauvais DATABASE_URL | Verifier .env et connexion MySQL/MariaDB      |
-| DomainException Provided key is too short | Secret JWT trop court                     | Definir JWT_SECRET >= 32 caracteres           |
-| 401 sur /api/me                           | Token manquant, expire ou mal forme       | Ajouter Authorization Bearer token valide     |
-| Commande docker inconnue                  | Docker Desktop absent                     | Installer Docker Desktop ou utiliser php -S   |
-| server:start inconnu                      | Symfony CLI non installee                 | Utiliser php -S host:port -t public           |
-| Erreur migration SQL                      | SQL non compatible MariaDB                | Adapter migration (ex: RENAME INDEX)          |
-| CORS en front                             | Headers non autorises                     | Configurer CORS pour Authorization et methods |
-| Challenge mismatch WebAuthn               | Mauvais encodage base64url                | Utiliser base64url strict, challenge unique   |
-| Origin mismatch WebAuthn                  | Domaine/port non conformes                | Aligner origin et rpId exacts                 |
+| Probleme                                  | Cause probable                            | Solution                                    |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------- |
+| 500 sur /api/login_check                  | DB non accessible ou mauvais DATABASE_URL | Verifier .env et connexion MySQL/MariaDB    |
+| DomainException Provided key is too short | Secret JWT trop court                     | Definir JWT_SECRET >= 32 caracteres         |
+| 401 sur /api/me                           | Token manquant, expire ou mal forme       | Ajouter Authorization Bearer token valide   |
+| Commande docker inconnue                  | Docker Desktop absent                     | Installer Docker Desktop ou utiliser php -S |
+| server:start inconnu                      | Symfony CLI non installee                 | Utiliser php -S host:port -t public         |
+
+---
+
+## 6. Annexe F - Checklist de validation rapide
+
+Cette checklist permet de prouver rapidement que les exigences JWT + Passkeys sont operationnelles:
+
+1. Login JWT:
+    - Requete `POST /api/login` avec un utilisateur valide.
+    - Reponse attendue: `200` avec `token`, `user`, `roles`, `expires_in`.
+2. Route protegee:
+    - Requete `GET /api/me` sans token -> `401`.
+    - Requete `GET /api/me` avec Bearer token -> `200`.
+3. Passkey options:
+    - Requete `POST /api/passkey/options` avec `username`.
+    - Reponse attendue: `200` avec `publicKey` et `challenge`.
+4. Passkey verify:
+    - Requete `POST /api/passkey/verify` avec assertion valide.
+    - Reponse attendue: `200` avec un JWT.
+5. Limitation de debit:
+    - Repetitions rapides sur endpoints passkey.
+    - Reponse attendue a seuil depasse: `429`.
+
+Cette sequence peut etre capturee (Postman ou curl) et jointe en annexe de soutenance.
+| Erreur migration SQL | SQL non compatible MariaDB | Adapter migration (ex: RENAME INDEX) |
+| CORS en front | Headers non autorises | Configurer CORS pour Authorization et methods |
+| Challenge mismatch WebAuthn | Mauvais encodage base64url | Utiliser base64url strict, challenge unique |
+| Origin mismatch WebAuthn | Domaine/port non conformes | Aligner origin et rpId exacts |
 
 ### 5.2 Logs de debogage Symfony
 

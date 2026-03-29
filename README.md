@@ -115,3 +115,20 @@ docker compose up -d --build
 - Passkey endpoints are now rate-limited with dedicated limiters
 - Passkey challenge has a configurable short TTL
 - Passkey registration and authentication now validate WebAuthn cryptographic proofs (origin, rpId hash, signature, sign counter)
+
+## Local quick start checklist
+
+Use this sequence when running the project on a local Windows machine:
+
+1. `composer install`
+2. `php bin/console doctrine:migrations:migrate --no-interaction`
+3. `php bin/console app:create-demo-users`
+4. `php -S 127.0.0.1:8011 -t public public/index.php`
+5. Open `http://127.0.0.1:8011`
+
+## Troubleshooting (Windows)
+
+- If `docker` is not recognized, run the app in local mode with `php -S`.
+- If `symfony server:start` fails because of a locked log file, stop stale `php-cgi.exe` processes and restart.
+- If routes return 401 in API tests, ensure you include a Bearer JWT token for protected endpoints.
+- If migrations fail, verify your `DATABASE_URL` and ensure MySQL/MariaDB is running.
